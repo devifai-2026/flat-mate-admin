@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const isProd = false;
+const isProd = true;
 
 const baseURL = isProd ? 'https://justflatmate.in/api' : 'http://localhost:8000/api';
 
