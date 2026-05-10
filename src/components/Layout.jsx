@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Home, MessageSquare, Ticket, LogOut, Eye, Activity, Database, IndianRupee } from 'lucide-react';
+import { LayoutDashboard, Users, Home, MessageSquare, Ticket, LogOut, Eye, Activity, Database, IndianRupee, Gift } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useSocket from '../hooks/useSocket';
 import api from '../services/api';
@@ -19,6 +19,7 @@ const navItems = [
   { to: '/chats', label: 'Chats', icon: MessageSquare },
   { to: '/tickets', label: 'Tickets', icon: Ticket, badgeKey: 'tickets' },
   { to: '/transactions', label: 'Transactions', icon: IndianRupee },
+  { to: '/bonus-gifting', label: 'Bonus Gifting', icon: Gift },
   { to: '/guests', label: 'Guests', icon: Eye },
   { to: '/api-activity', label: 'API Activity', icon: Activity },
   { to: '/db-storage', label: 'DB Storage', icon: Database },
@@ -31,6 +32,7 @@ const breadcrumbMap = {
   '/chats': 'Chats',
   '/tickets': 'Tickets',
   '/transactions': 'Transactions',
+  '/bonus-gifting': 'Bonus Gifting',
   '/guests': 'Guests',
   '/api-activity': 'API Activity',
   '/db-storage': 'DB Storage',

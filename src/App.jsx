@@ -16,6 +16,7 @@ import GuestDetail from './pages/GuestDetail';
 import ApiActivity from './pages/ApiActivity';
 import DbStorage from './pages/DbStorage';
 import Transactions from './pages/Transactions';
+import BonusGifting from './pages/BonusGifting';
 import NotFound from './pages/NotFound';
 
 function ProtectedRoute({ children }) {
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="guests" element={<Guests />} />
           <Route path="guests/:id" element={<GuestDetail />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="bonus-gifting" element={<BonusGifting />} />
           <Route path="api-activity" element={<ApiActivity />} />
           <Route path="db-storage" element={<DbStorage />} />
           <Route path="*" element={<NotFound />} />

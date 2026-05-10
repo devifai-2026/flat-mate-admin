@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ChevronLeft, ChevronRight, Loader2, EyeOff, Eye, Home, Building, ClipboardList } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, EyeOff, Eye, Home, Building, ClipboardList } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import LocationAutocomplete from '../components/LocationAutocomplete';
 
 const PRIMARY = '#FF1351';
 const DARK = '#1a1a2e';
@@ -22,12 +23,19 @@ export default function Listings() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [hiddenOnly, setHiddenOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
   const [togglingId, setTogglingId] = useState(null);
   const [counts, setCounts] = useState({ rooms: 0, pgs: 0, requirements: 0 });
   const navigate = useNavigate();
+
+  // Debounce free-text input so each keystroke doesn't fire a request.
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(id);
+  }, [search]);
 
   useEffect(() => {
     api.get('/admin/listings/counts').then(res => setCounts(res.data.data)).catch(() => {});
@@ -37,7 +45,13 @@ export default function Listings() {
     setLoading(true);
     try {
       const params = { type, page, limit: 20 };
-      if (search) params.search = search;
+      // If the input is a 6-digit pincode, send only `pincode` so the backend
+      // matches it cleanly against the location string. Otherwise treat it as
+      // free-text search across title/location/city.
+      if (debouncedSearch) {
+        if (/^\d{6}$/.test(debouncedSearch)) params.pincode = debouncedSearch;
+        else params.search = debouncedSearch;
+      }
       if (hiddenOnly) params.hidden = 'true';
       const { data } = await api.get('/admin/listings', { params });
       setItems(data.data);
@@ -47,10 +61,10 @@ export default function Listings() {
     } finally {
       setLoading(false);
     }
-  }, [type, page, search, hiddenOnly]);
+  }, [type, page, debouncedSearch, hiddenOnly]);
 
   useEffect(() => { fetchListings(); }, [fetchListings]);
-  useEffect(() => { setPage(1); }, [type, search, hiddenOnly]);
+  useEffect(() => { setPage(1); }, [type, debouncedSearch, hiddenOnly]);
 
   const toggleHide = async (item) => {
     setTogglingId(item._id);
@@ -66,6 +80,11 @@ export default function Listings() {
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+  const extractPincode = (item) => {
+    if (item.pincode) return String(item.pincode);
+    const loc = typeof item.location === 'string' ? item.location : item.location?.address || '';
+    return loc.match(/\b\d{6}\b/)?.[0] || null;
+  };
   const getOwner = (item) => {
     const owner = item.postedBy || item.createdBy;
     if (!owner) return { name: '-', image: null };
@@ -111,23 +130,12 @@ export default function Listings() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, alignItems: 'center' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10, flex: 1, maxWidth: 400,
-          background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '0 14px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-        }}>
-          <Search size={16} color={MUTED} />
-          <input
-            type="text"
-            placeholder="Search by title..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{
-              flex: 1, border: 'none', outline: 'none', padding: '12px 0',
-              fontSize: 14, fontFamily: 'inherit', background: 'transparent',
-            }}
-          />
-        </div>
+        <LocationAutocomplete
+          value={search}
+          onChange={setSearch}
+          onSelect={({ label }) => setSearch(label)}
+          placeholder="Search by title, area, city, or 6-digit pincode"
+        />
         <button
           onClick={() => setHiddenOnly(!hiddenOnly)}
           style={{
@@ -151,7 +159,7 @@ export default function Listings() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                {['', 'Title', 'Location', 'Price', 'Owner', 'Date', 'Status', 'Action'].map(h => (
+                {['', 'Title', 'Location', 'Pincode', 'Price', 'Owner', 'Date', 'Status', 'Action'].map(h => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600,
                     color: MUTED, textTransform: 'uppercase', letterSpacing: 0.5,
@@ -162,18 +170,18 @@ export default function Listings() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: 40, textAlign: 'center' }}>
+                  <td colSpan={9} style={{ padding: 40, textAlign: 'center' }}>
                     <Loader2 size={24} color={PRIMARY} style={{ animation: 'spin 1s linear infinite' }} />
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '60px 40px', textAlign: 'center' }}>
+                  <td colSpan={9} style={{ padding: '60px 40px', textAlign: 'center' }}>
                     <div style={{ width: 56, height: 56, borderRadius: 16, background: SURFACE, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
                       <Home size={24} color={MUTED} />
                     </div>
                     <div style={{ fontSize: 16, fontWeight: 600, color: DARK, marginBottom: 4 }}>No listings found</div>
-                    <div style={{ fontSize: 13, color: MUTED }}>{search ? 'Try a different search term' : hiddenOnly ? 'No hidden listings in this category' : 'No listings have been posted yet'}</div>
+                    <div style={{ fontSize: 13, color: MUTED }}>{debouncedSearch ? 'Try a different area, city, or pincode' : hiddenOnly ? 'No hidden listings in this category' : 'No listings have been posted yet'}</div>
                   </td>
                 </tr>
               ) : items.map(item => {
@@ -193,7 +201,25 @@ export default function Listings() {
                     <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 500, color: DARK, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.title || '-'}
                     </td>
-                    <td style={{ padding: '10px 16px', fontSize: 13, color: MUTED }}>{item.location?.address || item.city || item.locality || '-'}</td>
+                    <td style={{ padding: '10px 16px', fontSize: 13, color: MUTED, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={typeof item.location === 'string' ? item.location : item.location?.address || ''}>
+                      {typeof item.location === 'string'
+                        ? item.location
+                        : item.location?.address || item.city || item.locality || '-'}
+                    </td>
+                    <td style={{ padding: '10px 16px' }}>
+                      {(() => {
+                        const pin = extractPincode(item);
+                        return pin ? (
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, padding: '3px 8px',
+                            borderRadius: 6, background: `${PRIMARY}14`, color: PRIMARY,
+                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                          }}>{pin}</span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: MUTED }}>N/A</span>
+                        );
+                      })()}
+                    </td>
                     <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 600, color: DARK }}>₹{item.rent || item.price || (item.budget ? `${item.budget.min || 0} - ${item.budget.max || 0}` : '-')}</td>
                     <td style={{ padding: '10px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
