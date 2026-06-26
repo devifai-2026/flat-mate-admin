@@ -142,6 +142,8 @@ export default function AddListing() {
 
   // ── Target user (by phone) ──
   const [phone, setPhone] = useState('');
+  const [userName, setUserName] = useState('');
+  const [nameLocked, setNameLocked] = useState(false); // existing user already has a name
   const [lookup, setLookup] = useState(null);
   const [lookingUp, setLookingUp] = useState(false);
   const lookupTimer = useRef(null);
@@ -184,14 +186,23 @@ export default function AddListing() {
   useEffect(() => {
     clearTimeout(lookupTimer.current);
     setLookup(null);
-    if (!/^\d{10}$/.test(cleanPhone)) return;
+    if (!/^\d{10}$/.test(cleanPhone)) { setNameLocked(false); return; }
     setLookingUp(true);
     lookupTimer.current = setTimeout(async () => {
       try {
         const { data } = await api.get('/admin/users/lookup', { params: { phone: cleanPhone } });
         setLookup(data.data);
+        // If the existing user already has a name, prefill + lock it (we never overwrite).
+        const existingName = data.data?.user?.name;
+        if (data.data?.exists && existingName) {
+          setUserName(existingName);
+          setNameLocked(true);
+        } else {
+          setNameLocked(false);
+        }
       } catch {
         setLookup(null);
+        setNameLocked(false);
       } finally {
         setLookingUp(false);
       }
@@ -234,6 +245,12 @@ export default function AddListing() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!/^\d{10}$/.test(cleanPhone)) return toast.error('Enter a valid 10-digit phone number');
+    // Name is required for a new account (or an existing one that has no name yet).
+    const isNewAccount = !lookup?.exists;
+    if (!nameLocked && !userName.trim()) {
+      return toast.error(isNewAccount ? 'Enter the user’s name (required for new accounts)' : 'Enter the user’s name');
+    }
+    const namePart = nameLocked ? {} : { name: userName.trim() };
 
     let payload;
 
@@ -246,7 +263,7 @@ export default function AddListing() {
       if (!room.roomType) return toast.error('Select a room type');
       if (!room.furnishing) return toast.error('Select furnishing');
       payload = {
-        phone: cleanPhone,
+        phone: cleanPhone, ...namePart,
         title: room.title, description: room.description, location: room.location,
         rent: Number(room.rent), deposit: Number(room.deposit) || 0,
         availableFrom: new Date(room.availableFrom).toISOString(),
@@ -262,7 +279,7 @@ export default function AddListing() {
       if (!pg.location) return toast.error('Enter location');
       if (!pg.city) return toast.error('Enter city');
       payload = {
-        phone: cleanPhone,
+        phone: cleanPhone, ...namePart,
         title: pg.title, description: pg.description || undefined, location: pg.location, city: pg.city,
         rent: Number(pg.rent), deposit: Number(pg.deposit) || 0,
         sharing: pg.sharing, gender: pg.gender,
@@ -278,7 +295,7 @@ export default function AddListing() {
       if (Number(req.budgetMax) < Number(req.budgetMin)) return toast.error('Budget max must be ≥ min');
       if (reqTags.length < 5) return toast.error('Select at least 5 lifestyle preferences');
       payload = {
-        phone: cleanPhone,
+        phone: cleanPhone, ...namePart,
         type: 'flatmate', title: req.title, description: req.description || undefined,
         budget: { min: Number(req.budgetMin), max: Number(req.budgetMax) },
         location: req.location, moveInDate: req.moveInDate || undefined, notes: req.notes || undefined,
@@ -354,22 +371,34 @@ export default function AddListing() {
           </div>
         </div>
 
-        {/* ── User by phone ── */}
+        {/* ── User by phone + name ── */}
         <div style={sectionStyle}>
           <h2 style={sectionTitleStyle}>User</h2>
-          <Field label="Phone number *">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '0 12px', background: WHITE, maxWidth: 320 }}>
-              <Phone size={16} color={MUTED} />
+          <div style={gridStyle}>
+            <Field label="Phone number *">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '0 12px', background: WHITE }}>
+                <Phone size={16} color={MUTED} />
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="10-digit mobile number"
+                  style={{ flex: 1, border: 'none', outline: 'none', padding: '11px 0', fontSize: 14, fontFamily: 'inherit', background: 'transparent' }}
+                />
+              </div>
+            </Field>
+            <Field label={nameLocked ? 'User name (existing)' : 'User name *'}>
               <input
-                type="tel"
-                inputMode="numeric"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="10-digit mobile number"
-                style={{ flex: 1, border: 'none', outline: 'none', padding: '11px 0', fontSize: 14, fontFamily: 'inherit', background: 'transparent' }}
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                disabled={nameLocked}
+                placeholder="e.g. Shreeraj Mane"
+                maxLength={100}
+                style={{ ...inputStyle, background: nameLocked ? SURFACE : WHITE, color: nameLocked ? MUTED : DARK, cursor: nameLocked ? 'not-allowed' : 'text' }}
               />
-            </div>
-          </Field>
+            </Field>
+          </div>
           <div style={{ marginTop: 12, minHeight: 22 }}>
             {lookingUp && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: MUTED }}>
