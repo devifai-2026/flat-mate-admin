@@ -52,6 +52,12 @@ export default function ListingDetail() {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
 
+  // Listers get a read-only view — they can see the listing but not hide/unhide it.
+  const isLister = (() => {
+    try { return JSON.parse(localStorage.getItem('admin_user') || '{}').role === 'lister'; }
+    catch { return false; }
+  })();
+
   useEffect(() => {
     setLoading(true);
     api.get(`/admin/listings/${type}/${id}`)
@@ -126,20 +132,22 @@ export default function ListingDetail() {
             {item.isHidden ? <EyeOff size={14} /> : <Eye size={14} />}
             {item.isHidden ? 'Hidden' : 'Visible'}
           </div>
-          <button
-            onClick={toggleHide}
-            disabled={toggling}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px',
-              fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: 'pointer',
-              border: 'none', color: WHITE,
-              background: item.isHidden ? '#10b981' : PRIMARY,
-              opacity: toggling ? 0.6 : 1,
-            }}
-          >
-            {toggling ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : item.isHidden ? <Eye size={14} /> : <EyeOff size={14} />}
-            {item.isHidden ? 'Unhide' : 'Hide'}
-          </button>
+          {!isLister && (
+            <button
+              onClick={toggleHide}
+              disabled={toggling}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px',
+                fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: 'pointer',
+                border: 'none', color: WHITE,
+                background: item.isHidden ? '#10b981' : PRIMARY,
+                opacity: toggling ? 0.6 : 1,
+              }}
+            >
+              {toggling ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : item.isHidden ? <Eye size={14} /> : <EyeOff size={14} />}
+              {item.isHidden ? 'Unhide' : 'Hide'}
+            </button>
+          )}
         </div>
       </div>
 

@@ -31,6 +31,13 @@ export default function Listings() {
   const [counts, setCounts] = useState({ rooms: 0, pgs: 0, requirements: 0 });
   const navigate = useNavigate();
 
+  // The restricted "lister" role gets a read-only view: no hide/unhide action
+  // and no drill-into-detail (the detail page can also toggle visibility).
+  const isLister = (() => {
+    try { return JSON.parse(localStorage.getItem('admin_user') || '{}').role === 'lister'; }
+    catch { return false; }
+  })();
+
   // Debounce free-text input so each keystroke doesn't fire a request.
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -159,7 +166,7 @@ export default function Listings() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                {['', 'Title', 'Location', 'Pincode', 'Price', 'Owner', 'Date', 'Status', 'Action'].map(h => (
+                {['', 'Title', 'Location', 'Pincode', 'Price', 'Owner', 'Date', 'Status', ...(isLister ? [] : ['Action'])].map(h => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600,
                     color: MUTED, textTransform: 'uppercase', letterSpacing: 0.5,
@@ -170,13 +177,13 @@ export default function Listings() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} style={{ padding: 40, textAlign: 'center' }}>
+                  <td colSpan={isLister ? 8 : 9} style={{ padding: 40, textAlign: 'center' }}>
                     <Loader2 size={24} color={PRIMARY} style={{ animation: 'spin 1s linear infinite' }} />
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ padding: '60px 40px', textAlign: 'center' }}>
+                  <td colSpan={isLister ? 8 : 9} style={{ padding: '60px 40px', textAlign: 'center' }}>
                     <div style={{ width: 56, height: 56, borderRadius: 16, background: SURFACE, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
                       <Home size={24} color={MUTED} />
                     </div>
@@ -188,7 +195,13 @@ export default function Listings() {
                 const owner = getOwner(item);
                 const thumb = (item.images || item.photos || [])[0];
                 return (
-                  <tr key={item._id} onClick={() => navigate(`/listings/${type}/${item._id}`)} style={{ borderBottom: `1px solid ${BORDER}`, cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = SURFACE} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <tr
+                    key={item._id}
+                    onClick={isLister ? undefined : () => navigate(`/listings/${type}/${item._id}`)}
+                    style={{ borderBottom: `1px solid ${BORDER}`, cursor: isLister ? 'default' : 'pointer', transition: 'background 0.15s' }}
+                    onMouseEnter={isLister ? undefined : e => e.currentTarget.style.background = SURFACE}
+                    onMouseLeave={isLister ? undefined : e => e.currentTarget.style.background = 'transparent'}
+                  >
                     <td style={{ padding: '10px 16px' }}>
                       {thumb ? (
                         <img src={thumb} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover' }} />
@@ -235,23 +248,25 @@ export default function Listings() {
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6, background: '#10b98114', color: '#10b981' }}>Visible</span>
                       )}
                     </td>
-                    <td style={{ padding: '10px 16px' }}>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleHide(item); }}
-                        disabled={togglingId === item._id}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px',
-                          fontSize: 12, fontWeight: 500, borderRadius: 6, cursor: 'pointer',
-                          border: `1px solid ${BORDER}`, background: WHITE,
-                          color: item.isHidden ? '#10b981' : PRIMARY,
-                          opacity: togglingId === item._id ? 0.5 : 1,
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {item.isHidden ? <Eye size={13} /> : <EyeOff size={13} />}
-                        {item.isHidden ? 'Unhide' : 'Hide'}
-                      </button>
-                    </td>
+                    {!isLister && (
+                      <td style={{ padding: '10px 16px' }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleHide(item); }}
+                          disabled={togglingId === item._id}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px',
+                            fontSize: 12, fontWeight: 500, borderRadius: 6, cursor: 'pointer',
+                            border: `1px solid ${BORDER}`, background: WHITE,
+                            color: item.isHidden ? '#10b981' : PRIMARY,
+                            opacity: togglingId === item._id ? 0.5 : 1,
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {item.isHidden ? <Eye size={13} /> : <EyeOff size={13} />}
+                          {item.isHidden ? 'Unhide' : 'Hide'}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
