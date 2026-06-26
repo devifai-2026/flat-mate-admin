@@ -1,0 +1,48 @@
+name: Deploy admin UI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-admin
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Build & deploy over SSH
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" bash -se <<'EOF'
+          set -euo pipefail
+          cd ~/flatmate-admin
+
+          # Source lives in ./repo, nginx serves ./dist
+          if [ -d repo/.git ]; then
+            cd repo && git fetch origin main && git reset --hard origin/main
+          else
+            git clone https://github.com/devifai-2026/flat-mate-admin.git repo && cd repo
+          fi
+
+          npm install
+          npm run build
+
+          cd ~/flatmate-admin
+          TS=$(date +%Y%m%d_%H%M%S)
+          [ -d dist ] && cp -r dist "dist.bak.$TS"
+          rm -rf dist && cp -r repo/dist dist
+          [ -f dist/_redirects ] || echo "/*    /index.html   200" > dist/_redirects
+
+          # keep only the 3 most recent dist backups
+          ls -dt dist.bak.* 2>/dev/null | tail -n +4 | xargs -r rm -rf
+          echo "✅ admin deployed: $(grep -o 'assets/[A-Za-z0-9_.-]*\.js' dist/index.html | head -1)"
+          EOF
