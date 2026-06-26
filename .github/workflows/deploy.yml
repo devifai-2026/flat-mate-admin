@@ -33,8 +33,12 @@ jobs:
             git clone https://github.com/devifai-2026/flat-mate-admin.git repo && cd repo
           fi
 
+          # Bust stale build artifacts/caches — git reset doesn't touch these,
+          # and a stale vite transform cache produces an old bundle on rebuild.
+          rm -rf dist node_modules/.vite
+
           npm install
-          npm run build
+          npm run build -- --force
 
           cd ~/flatmate-admin
           TS=$(date +%Y%m%d_%H%M%S)
