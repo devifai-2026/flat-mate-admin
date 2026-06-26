@@ -12,11 +12,13 @@ const SURFACE = '#F8F9FB';
 const WHITE = '#fff';
 const BORDER = '#E5E7EB';
 
+// `lister: true` marks tabs the restricted "lister" role is allowed to see.
+// A full admin (role 'admin') sees everything.
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/users', label: 'Users', icon: Users },
-  { to: '/listings', label: 'Listings', icon: Home },
-  { to: '/listings/new', label: 'Add Listing', icon: FilePlus },
+  { to: '/users', label: 'Users', icon: Users, lister: true },
+  { to: '/listings', label: 'Listings', icon: Home, lister: true },
+  { to: '/listings/new', label: 'Add Listing', icon: FilePlus, lister: true },
   { to: '/chats', label: 'Chats', icon: MessageSquare },
   { to: '/tickets', label: 'Tickets', icon: Ticket, badgeKey: 'tickets' },
   { to: '/transactions', label: 'Transactions', icon: IndianRupee },
@@ -44,19 +46,22 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const admin = JSON.parse(localStorage.getItem('admin_user') || '{}');
+  const isLister = admin.role === 'lister';
+  const visibleNavItems = isLister ? navItems.filter(i => i.lister) : navItems;
   const socket = useSocket();
   const [ticketBadge, setTicketBadge] = useState(0);
 
-  // Fetch badge count on mount
+  // Fetch badge count on mount (full admins only — tickets are hidden for listers)
   useEffect(() => {
+    if (isLister) return;
     api.get('/admin/tickets/badge-count')
       .then(res => setTicketBadge(res.data.data?.count || 0))
       .catch(() => {});
-  }, []);
+  }, [isLister]);
 
-  // Socket listeners for ticket events
+  // Socket listeners for ticket events (full admins only)
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || isLister) return;
 
     const onTicketCreated = (ticket) => {
       setTicketBadge(prev => prev + 1);
@@ -85,11 +90,11 @@ export default function Layout() {
       socket.off('ticket-message', onTicketMessage);
       socket.off('ticket-status', onTicketStatus);
     };
-  }, [socket]);
+  }, [socket, isLister]);
 
   // Reset badge when viewing tickets page
   useEffect(() => {
-    if (location.pathname.startsWith('/tickets')) {
+    if (!isLister && location.pathname.startsWith('/tickets')) {
       api.get('/admin/tickets/badge-count')
         .then(res => setTicketBadge(res.data.data?.count || 0))
         .catch(() => {});
@@ -128,7 +133,7 @@ export default function Layout() {
         </div>
 
         <nav style={{ flex: 1, padding: '16px 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {navItems.map(({ to, label, icon: Icon, end, badgeKey }) => {
+          {visibleNavItems.map(({ to, label, icon: Icon, end, badgeKey }) => {
             const badge = badgeKey === 'tickets' ? ticketBadge : 0;
             return (
               <NavLink

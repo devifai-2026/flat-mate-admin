@@ -25,28 +25,51 @@ function ProtectedRoute({ children }) {
   return token ? children : <Navigate to="/login" replace />;
 }
 
+function getRole() {
+  try {
+    return JSON.parse(localStorage.getItem('admin_user') || '{}').role || 'admin';
+  } catch {
+    return 'admin';
+  }
+}
+
+// Routes wrapped in this are hidden from the restricted "lister" role —
+// they get bounced to their landing page (Listings) instead.
+function FullAdminRoute({ children }) {
+  return getRole() === 'lister' ? <Navigate to="/listings" replace /> : children;
+}
+
+// The index ("/") is the Dashboard for admins, but listers don't have a
+// dashboard, so send them straight to Listings.
+function HomeRoute() {
+  return getRole() === 'lister' ? <Navigate to="/listings" replace /> : <Dashboard />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route index element={<Dashboard />} />
+          {/* Tabs available to the lister role */}
+          <Route index element={<HomeRoute />} />
           <Route path="users" element={<Users />} />
           <Route path="users/:id" element={<UserDetail />} />
           <Route path="listings" element={<Listings />} />
           <Route path="listings/new" element={<AddListing />} />
           <Route path="listings/:type/:id" element={<ListingDetail />} />
-          <Route path="chats" element={<Chats />} />
-          <Route path="chats/:id" element={<ChatView />} />
-          <Route path="tickets" element={<Tickets />} />
-          <Route path="tickets/:id" element={<TicketDetail />} />
-          <Route path="guests" element={<Guests />} />
-          <Route path="guests/:id" element={<GuestDetail />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="bonus-gifting" element={<BonusGifting />} />
-          <Route path="api-activity" element={<ApiActivity />} />
-          <Route path="db-storage" element={<DbStorage />} />
+
+          {/* Full-admin-only tabs — listers are redirected to /listings */}
+          <Route path="chats" element={<FullAdminRoute><Chats /></FullAdminRoute>} />
+          <Route path="chats/:id" element={<FullAdminRoute><ChatView /></FullAdminRoute>} />
+          <Route path="tickets" element={<FullAdminRoute><Tickets /></FullAdminRoute>} />
+          <Route path="tickets/:id" element={<FullAdminRoute><TicketDetail /></FullAdminRoute>} />
+          <Route path="guests" element={<FullAdminRoute><Guests /></FullAdminRoute>} />
+          <Route path="guests/:id" element={<FullAdminRoute><GuestDetail /></FullAdminRoute>} />
+          <Route path="transactions" element={<FullAdminRoute><Transactions /></FullAdminRoute>} />
+          <Route path="bonus-gifting" element={<FullAdminRoute><BonusGifting /></FullAdminRoute>} />
+          <Route path="api-activity" element={<FullAdminRoute><ApiActivity /></FullAdminRoute>} />
+          <Route path="db-storage" element={<FullAdminRoute><DbStorage /></FullAdminRoute>} />
           <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="*" element={<NotFound />} />
