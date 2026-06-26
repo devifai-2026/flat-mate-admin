@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Home, MessageSquare, Ticket, LogOut, Eye, Activity, Database, IndianRupee, Gift } from 'lucide-react';
+import { LayoutDashboard, Users, Home, MessageSquare, Ticket, LogOut, Eye, Activity, Database, IndianRupee, Gift, FilePlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useSocket from '../hooks/useSocket';
 import api from '../services/api';
@@ -16,6 +16,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/listings', label: 'Listings', icon: Home },
+  { to: '/listings/new', label: 'Add Listing', icon: FilePlus },
   { to: '/chats', label: 'Chats', icon: MessageSquare },
   { to: '/tickets', label: 'Tickets', icon: Ticket, badgeKey: 'tickets' },
   { to: '/transactions', label: 'Transactions', icon: IndianRupee },
@@ -29,6 +30,7 @@ const breadcrumbMap = {
   '/': 'Dashboard',
   '/users': 'Users',
   '/listings': 'Listings',
+  '/listings/new': 'Listings / Add Listing',
   '/chats': 'Chats',
   '/tickets': 'Tickets',
   '/transactions': 'Transactions',

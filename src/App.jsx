@@ -7,6 +7,7 @@ import Users from './pages/Users';
 import UserDetail from './pages/UserDetail';
 import Listings from './pages/Listings';
 import ListingDetail from './pages/ListingDetail';
+import AddListing from './pages/AddListing';
 import Chats from './pages/Chats';
 import ChatView from './pages/ChatView';
 import Tickets from './pages/Tickets';
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="users" element={<Users />} />
           <Route path="users/:id" element={<UserDetail />} />
           <Route path="listings" element={<Listings />} />
+          <Route path="listings/new" element={<AddListing />} />
           <Route path="listings/:type/:id" element={<ListingDetail />} />
           <Route path="chats" element={<Chats />} />
           <Route path="chats/:id" element={<ChatView />} />
