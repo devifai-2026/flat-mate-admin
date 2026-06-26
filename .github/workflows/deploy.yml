@@ -38,7 +38,7 @@ jobs:
           rm -rf dist node_modules/.vite
 
           npm install
-          npm run build -- --force
+          npm run build
 
           cd ~/flatmate-admin
           TS=$(date +%Y%m%d_%H%M%S)
